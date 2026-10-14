@@ -26,6 +26,8 @@ env:
   PACKAGE_NAME: guangyapan-api-console
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  # 强制所有 JavaScript actions 使用 Node 24（解决 Node 20 弃用警告）
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # ============================================================
