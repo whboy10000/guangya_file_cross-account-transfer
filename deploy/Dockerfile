@@ -12,15 +12,15 @@ ENV PYTHONUNBUFFERED=1 \
     FLASK_ENV=production
 
 # 先复制依赖文件，利用 Docker 缓存
-COPY requirements.txt .
+COPY app/requirements.txt .
 
 # 安装依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制项目文件
-COPY app.py .
-COPY config.example.json .
-COPY static/ ./static/
+COPY app/app.py .
+COPY config/config.example.json .
+COPY app/static/ ./static/
 
 # 暴露端口
 EXPOSE 5001

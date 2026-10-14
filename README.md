@@ -28,20 +28,24 @@
 
 ```
 光压云盘/
-├── app.py                      # Flask 后端主程序（10个接口封装 + 签名鉴权）
-├── config.json                 # 凭证配置文件（含 client_id / client_secret，已 gitignore）
-├── config.example.json         # 凭证配置模板（提交到 Git，供他人参考）
-├── requirements.txt            # Python 依赖清单
-├── Dockerfile                  # Docker 镜像构建文件
-├── docker-compose.yml          # Docker Compose 一键部署
-├── .dockerignore               # Docker 构建忽略规则
-├── .gitignore                  # Git 忽略规则（排除 config.json 等敏感文件）
+├── app/                        # 应用代码
+│   ├── app.py                  # Flask 后端主程序（10个接口封装 + 签名鉴权）
+│   ├── requirements.txt        # Python 依赖清单
+│   └── static/
+│       └── index.html          # 前端单页应用
+├── config/                     # 配置文件
+│   ├── config.json             # 凭证配置（含 client_id / client_secret，已 gitignore）
+│   └── config.example.json     # 凭证配置模板
+├── deploy/                     # 部署相关
+│   ├── Dockerfile              # Docker 镜像构建文件
+│   └── docker-compose.yml      # Docker Compose 一键部署
+├── docs/                       # 文档
+│   └── 光压云盘开发者API文档.md  # 原始 API 参考文档
 ├── .github/
 │   └── workflows/
 │       └── release.yml         # GitHub Actions CI/CD 工作流
-├── static/
-│   └── index.html              # 前端单页应用
-├── 光压云盘开发者API文档.md      # 原始 API 参考文档
+├── .dockerignore               # Docker 构建忽略规则
+├── .gitignore                  # Git 忽略规则
 └── README.md                   # 本说明文档
 ```
 
@@ -57,7 +61,7 @@
 ### 2.2 安装依赖
 
 ```bash
-pip install flask requests
+pip install -r app/requirements.txt
 ```
 
 ### 2.3 配置凭证
@@ -65,10 +69,10 @@ pip install flask requests
 1. 复制配置模板：
 
 ```bash
-cp config.example.json config.json
+cp config/config.example.json config/config.json
 ```
 
-2. 编辑 `config.json`，填入你的凭证：
+2. 编辑 `config/config.json`，填入你的凭证：
 
 ```json
 {
@@ -81,13 +85,13 @@ cp config.example.json config.json
 >
 > 注意：开发者账号须为**会员**。
 >
-> **安全提示**：`config.json` 包含敏感凭证，已通过 `.gitignore` 排除，不会提交到 Git。
+> **安全提示**：`config/config.json` 包含敏感凭证，已通过 `.gitignore` 排除，不会提交到 Git。
 
 ### 2.4 启动服务
 
 ```bash
 cd 光压云盘
-python app.py
+python app/app.py
 ```
 
 启动成功后控制台会显示：
@@ -111,19 +115,19 @@ python app.py
 
 ```bash
 # 1. 配置凭证
-cp config.example.json config.json
-# 编辑 config.json 填入你的 client_id 和 client_secret
+cp config/config.example.json config/config.json
+# 编辑 config/config.json 填入你的 client_id 和 client_secret
 
-# 2. 一键启动
-docker compose up -d
+# 2. 一键启动（在项目根目录执行）
+docker compose -f deploy/docker-compose.yml up -d
 
 # 3. 访问 http://localhost:5001
 
 # 4. 查看日志
-docker compose logs -f
+docker compose -f deploy/docker-compose.yml logs -f
 
 # 5. 停止服务
-docker compose down
+docker compose -f deploy/docker-compose.yml down
 ```
 
 ### 3.2 方式二：直接运行镜像
@@ -132,14 +136,14 @@ docker compose down
 
 ```bash
 # 1. 配置凭证
-cp config.example.json config.json
-# 编辑 config.json 填入你的 client_id 和 client_secret
+cp config/config.example.json config/config.json
+# 编辑 config/config.json 填入你的 client_id 和 client_secret
 
 # 2. 拉取并运行
 docker run -d \
   --name guangyapan-console \
   -p 5001:5001 \
-  -v $(pwd)/config.json:/app/config.json:ro \
+  -v $(pwd)/config/config.json:/app/config.json:ro \
   ghcr.io/whboy10000/guangya_file_cross-account-transfer:latest
 
 # 3. 访问 http://localhost:5001
@@ -149,13 +153,13 @@ docker run -d \
 
 ```bash
 # 1. 配置凭证
-cp config.example.json config.json
+cp config/config.example.json config/config.json
 
 # 2. 构建镜像
-docker build -t guangyapan-console .
+docker build -f deploy/Dockerfile -t guangyapan-console .
 
 # 3. 运行容器
-docker compose up -d
+docker compose -f deploy/docker-compose.yml up -d
 ```
 
 ### 3.4 镜像标签说明

@@ -80,7 +80,7 @@ jobs:
           # 先输出到 /tmp 避免 tar 打包时包含自身（file changed as we read it）
           tar -czf "/tmp/${OUTPUT_FILE}" \
             --exclude=".git" \
-            --exclude="config.json" \
+            --exclude="config/config.json" \
             --exclude="__pycache__" \
             --exclude="*.pyc" \
             --exclude=".DS_Store" \
@@ -147,6 +147,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: deploy/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

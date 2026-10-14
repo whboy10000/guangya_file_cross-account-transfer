@@ -1,5 +1,5 @@
 # 敏感配置文件（包含 client_id / client_secret，切勿提交）
-config.json
+config/config.json
 
 # Python
 __pycache__/

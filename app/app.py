@@ -15,14 +15,16 @@ from flask import Flask, request, jsonify, send_from_directory
 
 # ============== 配置 ==============
 BASE_URL = "https://dapi.guangyapan.com"
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+# config.json 位于项目根目录的 config/ 下（app.py 在 app/ 目录，所以 ../config/config.json）
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "config", "config.json")
+CONFIG_PATH = os.path.normpath(CONFIG_PATH)
 
 
 def load_config():
-    """从 config.json 读取凭证；不存在时给出提示"""
+    """从 config/config.json 读取凭证；不存在时给出提示"""
     if not os.path.exists(CONFIG_PATH):
         print(f"[错误] 配置文件不存在: {CONFIG_PATH}")
-        print("请复制 config.example.json 为 config.json 并填入你的 client_id 和 client_secret")
+        print("请复制 config/config.example.json 为 config/config.json 并填入你的 client_id 和 client_secret")
         sys.exit(1)
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         cfg = json.load(f)
