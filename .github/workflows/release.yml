@@ -74,7 +74,9 @@ jobs:
       - name: 打包源码
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          tar -czf "${PACKAGE_NAME}-${VERSION}.tar.gz" \
+          OUTPUT_FILE="${PACKAGE_NAME}-${VERSION}.tar.gz"
+          # 先输出到 /tmp 避免 tar 打包时包含自身（file changed as we read it）
+          tar -czf "/tmp/${OUTPUT_FILE}" \
             --exclude=".git" \
             --exclude="config.json" \
             --exclude="__pycache__" \
@@ -85,7 +87,8 @@ jobs:
             --exclude=".venv" \
             --exclude=".github" \
             .
-          ls -lh "${PACKAGE_NAME}-${VERSION}.tar.gz"
+          mv "/tmp/${OUTPUT_FILE}" "./${OUTPUT_FILE}"
+          ls -lh "${OUTPUT_FILE}"
 
       - name: 生成 SHA256 校验和
         run: |
