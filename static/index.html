@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光压云盘开发者 API 控制台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 20px 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.header h1 { font-size: 22px; font-weight: 600; }
+.header p { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+.container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.tab { padding: 10px 20px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+.tab:hover { border-color: #667eea; color: #667eea; }
+.tab.active { background: #667eea; color: #fff; border-color: #667eea; }
+.tab-section { display: none; }
+.tab-section.active { display: block; }
+.card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+.card-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.badge-get { background: #e8f5e9; color: #2e7d32; }
+.badge-post { background: #e3f2fd; color: #1565c0; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.form-group { display: flex; flex-direction: column; }
+.form-group label { font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 500; }
+.form-group label .req { color: #e53935; }
+.form-group input, .form-group select, .form-group textarea { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; outline: none; transition: border 0.2s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #667eea; }
+.form-group textarea { resize: vertical; min-height: 60px; font-family: monospace; }
+.btn { padding: 9px 20px; background: #667eea; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: background 0.2s; }
+.btn:hover { background: #5568d3; }
+.btn:disabled { background: #ccc; cursor: not-allowed; }
+.btn-secondary { background: #fff; color: #667eea; border: 1px solid #667eea; }
+.btn-secondary:hover { background: #f0f0ff; }
+.btn-danger { background: #e53935; }
+.btn-danger:hover { background: #d32f2f; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.result-box { margin-top: 16px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; display: none; }
+.result-box.show { display: block; }
+.result-header { padding: 8px 12px; background: #f5f5f5; font-size: 12px; color: #666; display: flex; justify-content: space-between; align-items: center; }
+.result-content { padding: 12px; max-height: 400px; overflow: auto; background: #fafafa; }
+.result-content pre { font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+.table-wrap { overflow-x: auto; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; }
+th { background: #f5f5f5; font-weight: 600; color: #555; }
+tr:hover { background: #f9f9ff; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.tag-dir { background: #e3f2fd; color: #1565c0; }
+.tag-file { background: #e8f5e9; color: #2e7d32; }
+.tag-pending { background: #fff3e0; color: #e65100; }
+.tag-passed { background: #e8f5e9; color: #2e7d32; }
+.tag-rejected { background: #ffebee; color: #c62828; }
+.tag-success { background: #e8f5e9; color: #2e7d32; }
+.tag-failed { background: #ffebee; color: #c62828; }
+.tag-running { background: #fff3e0; color: #e65100; }
+.path-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.path-item { padding: 4px 10px; background: #f0f0ff; border-radius: 4px; cursor: pointer; font-size: 13px; color: #667eea; }
+.path-item:hover { background: #e0e0ff; }
+.path-sep { color: #ccc; }
+.row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.row .form-group { flex: 1; min-width: 150px; }
+.status-ok { color: #2e7d32; }
+.status-err { color: #c62828; }
+.loading { display: inline-block; width: 14px; height: 14px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 9999; opacity: 0; transition: opacity 0.3s; }
+.toast.show { opacity: 1; }
+.toast.success { background: #4caf50; }
+.toast.error { background: #f44336; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>☁️ 光压云盘开发者 API 控制台</h1>
+  <p>封装全部 10 个接口 · 签名鉴权自动处理 · 点击即可调用</p>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <div class="tab active" data-tab="file">📁 文件管理</div>
+    <div class="tab" data-tab="preupload">🔍 预上传审核</div>
+    <div class="tab" data-tab="upload">📤 正式上传</div>
+  </div>
+
+  <!-- ============ 文件管理 ============ -->
+  <div class="tab-section active" id="tab-file">
+    <!-- 获取文件列表 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        获取文件列表 get_file_list
+      </div>
+      <div class="card-desc">浏览开发者本人云盘目录，选取待上传的 fileId</div>
+      <div class="path-bar" id="pathBar">
+        <span class="path-item" data-id="">🏠 根目录</span>
+      </div>
+      <div class="row">
+        <div class="form-group">
+          <label>父目录ID</label>
+          <input type="text" id="list_parentId" value="">
+        </div>
+        <div class="form-group">
+          <label>页码 <span class="req">*</span></label>
+          <input type="number" id="list_page" value="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>每页条数 <span class="req">*</span></label>
+          <input type="number" id="list_pageSize" value="20" min="1">
+        </div>
+        <div class="form-group">
+          <label>目录类型</label>
+          <select id="list_dirType">
+            <option value="">不限</option>
+            <option value="0">未知</option>
+            <option value="1" selected>普通</option>
+            <option value="2">转存</option>
+            <option value="3">收藏</option>
+            <option value="4">回收站</option>
+            <option value="5">直链</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>排序字段 <span class="req">*</span></label>
+          <select id="list_orderBy">
+            <option value="0">名称</option>
+            <option value="1">大小</option>
+            <option value="2" selected>创建时间</option>
+            <option value="3">更新时间</option>
+            <option value="4">扩展名</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>排序方式 <span class="req">*</span></label>
+          <select id="list_sortType">
+            <option value="0">升序</option>
+            <option value="1" selected>降序</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>资源类型</label>
+          <select id="list_resType">
+            <option value="">不限</option>
+            <option value="1">仅文件</option>
+            <option value="2">仅目录</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callGetFileList()">查询</button>
+        </div>
+      </div>
+      <div id="listResult"></div>
+    </div>
+
+    <!-- 获取文件详情 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        获取文件详情 get_file_detail
+      </div>
+      <div class="card-desc">按 fileId 查询单个文件/目录详情，确认资源后再送审或上传</div>
+      <div class="row">
+        <div class="form-group" style="flex:2">
+          <label>文件/目录ID <span class="req">*</span></label>
+          <input type="text" id="detail_fileId" placeholder="输入 fileId">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callGetFileDetail()">查询详情</button>
+        </div>
+      </div>
+      <div id="detailResult"></div>
+    </div>
+
+    <!-- 重命名 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        文件/文件夹重命名 rename
+      </div>
+      <div class="card-desc">修改开发者本人云盘内某文件/文件夹的名称</div>
+      <div class="row">
+        <div class="form-group">
+          <label>文件/目录ID <span class="req">*</span></label>
+          <input type="text" id="rename_fileId" placeholder="输入 fileId">
+        </div>
+        <div class="form-group" style="flex:2">
+          <label>新名称 <span class="req">*</span></label>
+          <input type="text" id="rename_newName" placeholder="输入新名称">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callRename()">重命名</button>
+        </div>
+      </div>
+      <div id="renameResult"></div>
+    </div>
+  </div>
+
+  <!-- ============ 预上传审核 ============ -->
+  <div class="tab-section" id="tab-preupload">
+    <!-- 预上传 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        预上传 pre_upload
+      </div>
+      <div class="card-desc">将待上传的根文件/目录提交分享风控送审。建议正式上传前先走本接口</div>
+      <div class="row">
+        <div class="form-group">
+          <label>接收方 TOKEN_ID <span class="req">*</span></label>
+          <input type="text" id="pre_token_id" placeholder="接收方下发的 UploadToken">
+        </div>
+        <div class="form-group" style="flex:2">
+          <label>文件/目录ID列表 <span class="req">*</span>（逗号分隔，1~20个）</label>
+          <input type="text" id="pre_file_ids" placeholder="fid_file_001, fid_dir_001">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callPreUpload()">提交送审</button>
+        </div>
+      </div>
+      <div id="preResult"></div>
+    </div>
+
+    <!-- 预上传状态查询 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        预上传状态查询 pre_upload_status
+      </div>
+      <div class="card-desc">轮询预上传任务整体进度，直至 status=3（完成）或 4（失败）</div>
+      <div class="row">
+        <div class="form-group" style="flex:2">
+          <label>预上传任务ID <span class="req">*</span></label>
+          <input type="text" id="preStatus_task_id" placeholder="pre_upload 返回的 task_id">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn btn-secondary" onclick="callPreUploadStatus()">查询一次</button>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="pollPreUploadStatus()">自动轮询</button>
+        </div>
+      </div>
+      <div id="preStatusResult"></div>
+    </div>
+
+    <!-- 预上传详情获取 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        预上传详情获取 pre_upload_detail
+      </div>
+      <div class="card-desc">分页查看叶子文件审核结果（通过/拒绝/待审），用于排查 rejected/skipped</div>
+      <div class="row">
+        <div class="form-group" style="flex:2">
+          <label>预上传任务ID <span class="req">*</span></label>
+          <input type="text" id="preDetail_task_id" placeholder="预上传任务 ID">
+        </div>
+        <div class="form-group">
+          <label>过滤</label>
+          <select id="preDetail_filter">
+            <option value="">全部</option>
+            <option value="passed">通过</option>
+            <option value="rejected">拒绝</option>
+            <option value="pending">待审</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>页码</label>
+          <input type="number" id="preDetail_page" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label>每页条数 <span class="req">*</span></label>
+          <input type="number" id="preDetail_page_size" value="20" min="1" max="100">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callPreUploadDetail()">查询明细</button>
+        </div>
+      </div>
+      <div id="preDetailResult"></div>
+    </div>
+  </div>
+
+  <!-- ============ 正式上传 ============ -->
+  <div class="tab-section" id="tab-upload">
+    <!-- 通过文件ID上传 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        通过文件ID上传 upload_by_fileid
+      </div>
+      <div class="card-desc">正式发起跨用户 copy：将开发者云盘中的文件写入接收方 TOKEN 目录</div>
+      <div class="row">
+        <div class="form-group">
+          <label>接收方 TOKEN_ID <span class="req">*</span></label>
+          <input type="text" id="up_token_id" placeholder="接收方下发的 UploadToken">
+        </div>
+        <div class="form-group" style="flex:2">
+          <label>文件/目录ID列表 <span class="req">*</span>（逗号分隔，1~20个）</label>
+          <input type="text" id="up_file_ids" placeholder="fid_file_001, fid_dir_001">
+        </div>
+        <div class="form-group">
+          <label>重名处理</label>
+          <select id="up_dup">
+            <option value="0">自动重命名</option>
+            <option value="1">跳过不上传</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callUploadByFileid()">开始上传</button>
+        </div>
+      </div>
+      <div id="upResult"></div>
+    </div>
+
+    <!-- 上传状态查询 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        上传状态查询 upload_status
+      </div>
+      <div class="card-desc">轮询正式上传任务，直到 success/failed</div>
+      <div class="row">
+        <div class="form-group" style="flex:2">
+          <label>上传任务ID <span class="req">*</span></label>
+          <input type="text" id="upStatus_task_id" placeholder="upload_by_fileid 返回的 task_id">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn btn-secondary" onclick="callUploadStatus()">查询一次</button>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="pollUploadStatus()">自动轮询</button>
+        </div>
+      </div>
+      <div id="upStatusResult"></div>
+    </div>
+
+    <!-- 上传跳过的文件列表 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        上传跳过的文件列表 upload_skipped_list
+      </div>
+      <div class="card-desc">终态后，查询上传跳过的文件列表（保留72h）</div>
+      <div class="row">
+        <div class="form-group" style="flex:2">
+          <label>上传任务ID <span class="req">*</span></label>
+          <input type="text" id="skip_task_id" placeholder="upload_by_fileid 返回的 task_id">
+        </div>
+        <div class="form-group">
+          <label>过滤原因</label>
+          <select id="skip_reason">
+            <option value="">全部</option>
+            <option value="audit_rejected">审核拒绝</option>
+            <option value="audit_expired">审核过期</option>
+            <option value="audit_pending">审核中</option>
+            <option value="space_exhausted">空间不足</option>
+            <option value="duplicate_name">重名</option>
+            <option value="duplicate_dir_name">目录重名</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>每页条数</label>
+          <input type="number" id="skip_page_size" value="100" min="1" max="1000">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callSkippedList()">查询</button>
+        </div>
+      </div>
+      <div id="skipResult"></div>
+    </div>
+
+    <!-- 上传成功的文件列表 -->
+    <div class="card">
+      <div class="card-title">
+        <span class="badge badge-post">POST</span>
+        上传成功的文件列表 upload_success_list
+      </div>
+      <div class="card-desc">终态后，查询上传成功的文件列表（保留72h）</div>
+      <div class="row">
+        <div class="form-group" style="flex:2">
+          <label>上传任务ID <span class="req">*</span></label>
+          <input type="text" id="success_task_id" placeholder="upload_by_fileid 返回的 task_id">
+        </div>
+        <div class="form-group">
+          <label>每页条数</label>
+          <input type="number" id="success_page_size" value="100" min="1" max="1000">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="callSuccessList()">查询</button>
+        </div>
+      </div>
+      <div id="successResult"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ============ Tab 切换 ============
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ============ 通用请求 ============
+async function apiPost(url, data) {
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return await resp.json();
+  } catch (e) {
+    return { code: -1, msg: '网络错误: ' + e.message };
+  }
+}
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function renderResult(el, data, ok) {
+  const box = document.getElementById(el);
+  const statusHtml = ok
+    ? '<span class="status-ok">✓ 成功</span>'
+    : '<span class="status-err">✗ 失败</span>';
+  box.innerHTML = `
+    <div class="result-box show">
+      <div class="result-header">
+        <span>响应结果 ${statusHtml}</span>
+        <span style="color:#999">code: ${data.code ?? 'N/A'} | ${data.msg ?? ''}</span>
+      </div>
+      <div class="result-content"><pre>${JSON.stringify(data, null, 2)}</pre></div>
+    </div>`;
+}
+
+function isSuccess(data) {
+  if (data.code !== undefined) return data.code === 0;
+  return data.msg === 'success';
+}
+
+function fmtSize(b) {
+  if (!b) return '-';
+  const u = ['B','KB','MB','GB','TB'];
+  let i = 0, s = b;
+  while (s >= 1024 && i < u.length - 1) { s /= 1024; i++; }
+  return s.toFixed(2) + ' ' + u[i];
+}
+function fmtTime(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('zh-CN');
+}
+
+// ============ 文件列表路径导航 ============
+let pathStack = [{ id: '', name: '根目录' }];
+function renderPathBar() {
+  const bar = document.getElementById('pathBar');
+  bar.innerHTML = pathStack.map((p, i) =>
+    `<span class="path-item" data-idx="${i}">${i === 0 ? '🏠 ' : ''}${p.name}</span>${i < pathStack.length - 1 ? '<span class="path-sep">/</span>' : ''}`
+  ).join('');
+  bar.querySelectorAll('.path-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      pathStack = pathStack.slice(0, idx + 1);
+      document.getElementById('list_parentId').value = pathStack[idx].id;
+      renderPathBar();
+      callGetFileList();
+    });
+  });
+}
+
+// ============ 3.3.1 获取文件列表 ============
+async function callGetFileList() {
+  const parentId = document.getElementById('list_parentId').value;
+  const data = {
+    parentId: parentId,
+    page: parseInt(document.getElementById('list_page').value) || 0,
+    pageSize: parseInt(document.getElementById('list_pageSize').value) || 20,
+    orderBy: parseInt(document.getElementById('list_orderBy').value),
+    sortType: parseInt(document.getElementById('list_sortType').value),
+  };
+  const dt = document.getElementById('list_dirType').value;
+  if (dt !== '') data.dirType = parseInt(dt);
+  const rt = document.getElementById('list_resType').value;
+  if (rt !== '') data.resType = parseInt(rt);
+
+  const resp = await apiPost('/api/file/get_file_list', data);
+  const ok = isSuccess(resp);
+  if (ok) {
+    const list = resp.data?.list || [];
+    const total = resp.data?.total || 0;
+    let html = `
+      <div class="result-box show">
+        <div class="result-header">
+          <span class="status-ok">✓ 成功</span>
+          <span>共 ${total} 项，当前 ${list.length} 项</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>类型</th><th>名称</th><th>大小</th><th>fileId</th><th>更新时间</th><th>操作</th></tr></thead>
+            <tbody>`;
+    list.forEach(item => {
+      const isDir = item.resType === 2;
+      const typeTag = isDir ? '<span class="tag tag-dir">目录</span>' : '<span class="tag tag-file">文件</span>';
+      const detailBtn = `<button class="btn btn-sm btn-secondary" onclick="viewDetail('${item.fileId}')">详情</button>`;
+      const openBtn = isDir ? `<button class="btn btn-sm" onclick="openDir('${item.fileId}','${item.fileName.replace(/'/g,"\\'")}')">进入</button>` : '';
+      html += `<tr>
+        <td>${typeTag}</td>
+        <td>${item.fileName || ''}</td>
+        <td>${fmtSize(item.fileSize)}</td>
+        <td><code>${item.fileId}</code></td>
+        <td>${fmtTime(item.utime)}</td>
+        <td>${openBtn} ${detailBtn}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div></div>';
+    document.getElementById('listResult').innerHTML = html;
+  } else {
+    renderResult('listResult', resp, false);
+  }
+}
+
+function openDir(id, name) {
+  pathStack.push({ id, name });
+  document.getElementById('list_parentId').value = id;
+  document.getElementById('list_page').value = 0;
+  renderPathBar();
+  callGetFileList();
+}
+
+function viewDetail(fileId) {
+  document.getElementById('detail_fileId').value = fileId;
+  callGetFileDetail();
+  document.getElementById('detailResult').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ============ 3.3.2 获取文件详情 ============
+async function callGetFileDetail() {
+  const fileId = document.getElementById('detail_fileId').value.trim();
+  if (!fileId) { showToast('请输入 fileId', 'error'); return; }
+  const resp = await apiPost('/api/file/get_file_detail', { fileId });
+  const ok = isSuccess(resp);
+  if (ok && resp.data?.fileInfo) {
+    const f = resp.data.fileInfo;
+    const loc = resp.data.location || '';
+    const isDir = f.resType === 2;
+    const typeTag = isDir ? '<span class="tag tag-dir">目录</span>' : '<span class="tag tag-file">文件</span>';
+    let html = `
+      <div class="result-box show">
+        <div class="result-header">
+          <span class="status-ok">✓ 成功</span>
+          <span>${loc}</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <tr><th>类型</th><td>${typeTag}</td><th>fileId</th><td><code>${f.fileId}</code></td></tr>
+            <tr><th>名称</th><td colspan="3">${f.fileName || ''}</td></tr>
+            <tr><th>大小</th><td>${fmtSize(f.fileSize)}</td><th>扩展名</th><td>${f.ext || '-'}</td></tr>
+            <tr><th>创建时间</th><td>${fmtTime(f.ctime)}</td><th>更新时间</th><td>${fmtTime(f.utime)}</td></tr>
+            <tr><th>父目录ID</th><td><code>${f.parentId || '-'}</code></td><th>深度</th><td>${f.depth ?? '-'}</td></tr>`;
+    if (resp.data.sizeInfo) {
+      const s = resp.data.sizeInfo;
+      html += `<tr><th>总大小</th><td>${fmtSize(s.size)}</td><th>子目录/文件</th><td>${s.subDirCount ?? 0} / ${s.subFileCount ?? 0}</td></tr>`;
+    }
+    html += '</table></div>';
+    if (resp.data.videoResource?.length) {
+      html += '<div style="margin-top:12px"><strong>视频资源：</strong><pre>' + JSON.stringify(resp.data.videoResource, null, 2) + '</pre></div>';
+    }
+    if (resp.data.picInfo) {
+      html += '<div style="margin-top:12px"><strong>图片信息：</strong><pre>' + JSON.stringify(resp.data.picInfo, null, 2) + '</pre></div>';
+    }
+    html += '</div>';
+    document.getElementById('detailResult').innerHTML = html;
+  } else {
+    renderResult('detailResult', resp, false);
+  }
+}
+
+// ============ 3.3.3 重命名 ============
+async function callRename() {
+  const fileId = document.getElementById('rename_fileId').value.trim();
+  const newName = document.getElementById('rename_newName').value.trim();
+  if (!fileId || !newName) { showToast('请填写 fileId 和新名称', 'error'); return; }
+  const resp = await apiPost('/api/file/rename', { fileId, newName });
+  const ok = isSuccess(resp);
+  renderResult('renameResult', resp, ok);
+  if (ok) showToast('重命名成功');
+}
+
+// ============ 3.3.4 预上传 ============
+async function callPreUpload() {
+  const token_id = document.getElementById('pre_token_id').value.trim();
+  const file_ids_str = document.getElementById('pre_file_ids').value.trim();
+  if (!token_id || !file_ids_str) { showToast('请填写 token_id 和 file_ids', 'error'); return; }
+  const file_ids = file_ids_str.split(',').map(s => s.trim()).filter(Boolean);
+  const resp = await apiPost('/api/developer/pre_upload', { token_id, file_ids });
+  const ok = isSuccess(resp);
+  if (ok && resp.data?.task_id) {
+    document.getElementById('preStatus_task_id').value = resp.data.task_id;
+    document.getElementById('preDetail_task_id').value = resp.data.task_id;
+    showToast('预上传任务已创建: ' + resp.data.task_id);
+  }
+  renderResult('preResult', resp, ok);
+}
+
+// ============ 3.3.5 预上传状态查询 ============
+async function callPreUploadStatus() {
+  const task_id = document.getElementById('preStatus_task_id').value.trim();
+  if (!task_id) { showToast('请输入 task_id', 'error'); return; }
+  const resp = await apiPost('/api/developer/pre_upload_status', { task_id });
+  const ok = isSuccess(resp);
+  if (ok && resp.data) {
+    const d = resp.data;
+    const statusMap = {0:'未开始',1:'提交审核中',2:'审核中',3:'审核完成',4:'送审失败'};
+    const st = statusMap[d.status] || d.status;
+    const tag = d.status === 3 ? 'tag-passed' : d.status === 4 ? 'tag-rejected' : 'tag-pending';
+    let html = `
+      <div class="result-box show">
+        <div class="result-header">
+          <span class="status-ok">✓ 成功</span>
+          <span>状态: <span class="tag ${tag}">${st}</span></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <tr><th>任务ID</th><td><code>${d.task_id}</code></td></tr>
+            <tr><th>总数</th><td>${d.total_count ?? 0}</td>
+                <th>已通过</th><td><span class="status-ok">${d.passed_count ?? 0}</span></td></tr>
+            <tr><th>已拒绝</th><td><span class="status-err">${d.rejected_count ?? 0}</span></td>
+                <th>审核中</th><td><span class="tag tag-pending">${d.pending_count ?? 0}</span></td></tr>
+          </table>
+        </div>
+      </div>`;
+    document.getElementById('preStatusResult').innerHTML = html;
+  } else {
+    renderResult('preStatusResult', resp, false);
+  }
+  return resp;
+}
+
+let prePollTimer = null;
+async function pollPreUploadStatus() {
+  if (prePollTimer) { clearInterval(prePollTimer); prePollTimer = null; showToast('已停止轮询'); return; }
+  showToast('开始轮询（每3秒），再次点击停止');
+  await callPreUploadStatus();
+  prePollTimer = setInterval(async () => {
+    const resp = await callPreUploadStatus();
+    if (resp.data && (resp.data.status === 3 || resp.data.status === 4)) {
+      clearInterval(prePollTimer); prePollTimer = null;
+      showToast(resp.data.status === 3 ? '审核完成！' : '送审失败');
+    }
+  }, 3000);
+}
+
+// ============ 3.3.6 预上传详情获取 ============
+async function callPreUploadDetail() {
+  const task_id = document.getElementById('preDetail_task_id').value.trim();
+  if (!task_id) { showToast('请输入 task_id', 'error'); return; }
+  const data = {
+    task_id,
+    page: parseInt(document.getElementById('preDetail_page').value) || 1,
+    page_size: parseInt(document.getElementById('preDetail_page_size').value) || 20,
+  };
+  const f = document.getElementById('preDetail_filter').value;
+  if (f) data.filter = f;
+  const resp = await apiPost('/api/developer/pre_upload_detail', data);
+  const ok = isSuccess(resp);
+  if (ok && resp.data) {
+    const d = resp.data;
+    const list = d.list || [];
+    const auditTag = s => s === 'passed' ? '<span class="tag tag-passed">通过</span>' : s === 'rejected' ? '<span class="tag tag-rejected">拒绝</span>' : '<span class="tag tag-pending">待审</span>';
+    let html = `
+      <div class="result-box show">
+        <div class="result-header">
+          <span class="status-ok">✓ 成功</span>
+          <span>共 ${d.total ?? 0} 条，当前 ${list.length} 条 | 通过:${d.passed_count ?? 0} 拒绝:${d.rejected_count ?? 0} 待审:${d.pending_count ?? 0}</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>fileId</th><th>文件名</th><th>大小</th><th>审核状态</th><th>可分享</th></tr></thead>
+            <tbody>`;
+    list.forEach(item => {
+      html += `<tr>
+        <td><code>${item.file_id}</code></td>
+        <td>${item.file_name || ''}</td>
+        <td>${fmtSize(item.file_size)}</td>
+        <td>${auditTag(item.audit_status)}</td>
+        <td>${item.can_share ? '✓' : '✗'}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div></div>';
+    document.getElementById('preDetailResult').innerHTML = html;
+  } else {
+    renderResult('preDetailResult', resp, false);
+  }
+}
+
+// ============ 3.3.7 通过文件ID上传 ============
+async function callUploadByFileid() {
+  const token_id = document.getElementById('up_token_id').value.trim();
+  const file_ids_str = document.getElementById('up_file_ids').value.trim();
+  if (!token_id || !file_ids_str) { showToast('请填写 token_id 和 file_ids', 'error'); return; }
+  const file_ids = file_ids_str.split(',').map(s => s.trim()).filter(Boolean);
+  const duplicate_name_policy = parseInt(document.getElementById('up_dup').value);
+  const resp = await apiPost('/api/developer/upload_by_fileid', { token_id, file_ids, duplicate_name_policy });
+  const ok = isSuccess(resp);
+  if (ok && resp.data?.task_id) {
+    document.getElementById('upStatus_task_id').value = resp.data.task_id;
+    document.getElementById('skip_task_id').value = resp.data.task_id;
+    document.getElementById('success_task_id').value = resp.data.task_id;
+    showToast('上传任务已创建: ' + resp.data.task_id);
+  }
+  renderResult('upResult', resp, ok);
+}
+
+// ============ 3.3.8 上传状态查询 ============
+async function callUploadStatus() {
+  const task_id = document.getElementById('upStatus_task_id').value.trim();
+  if (!task_id) { showToast('请输入 task_id', 'error'); return; }
+  const resp = await apiPost('/api/developer/upload_status', { task_id });
+  const ok = isSuccess(resp);
+  if (ok && resp.data) {
+    const d = resp.data;
+    const stMap = { pending:'等待中', running:'进行中', success:'成功', failed:'失败' };
+    const st = stMap[d.status] || d.status;
+    const tag = d.status === 'success' ? 'tag-success' : d.status === 'failed' ? 'tag-failed' : 'tag-running';
+    let html = `
+      <div class="result-box show">
+        <div class="result-header">
+          <span class="status-ok">✓ 成功</span>
+          <span>状态: <span class="tag ${tag}">${st}</span></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <tr><th>任务ID</th><td><code>${d.task_id}</code></td></tr>
+            <tr><th>TOKEN累计上传次数</th><td>${d.use_count ?? 0}</td>
+                <th>本任务成功数</th><td><span class="status-ok">${d.success_count ?? 0}</span></td></tr>
+            <tr><th>本任务跳过数</th><td colspan="3"><span class="status-err">${d.skipped_count ?? 0}</span></td></tr>
+          </table>
+        </div>
+      </div>`;
+    document.getElementById('upStatusResult').innerHTML = html;
+  } else {
+    renderResult('upStatusResult', resp, false);
+  }
+  return resp;
+}
+
+let upPollTimer = null;
+async function pollUploadStatus() {
+  if (upPollTimer) { clearInterval(upPollTimer); upPollTimer = null; showToast('已停止轮询'); return; }
+  showToast('开始轮询（每2秒），再次点击停止');
+  await callUploadStatus();
+  upPollTimer = setInterval(async () => {
+    const resp = await callUploadStatus();
+    if (resp.data && (resp.data.status === 'success' || resp.data.status === 'failed')) {
+      clearInterval(upPollTimer); upPollTimer = null;
+      showToast(resp.data.status === 'success' ? '上传成功！' : '上传失败');
+    }
+  }, 2000);
+}
+
+// ============ 3.3.9 上传跳过的文件列表 ============
+async function callSkippedList() {
+  const task_id = document.getElementById('skip_task_id').value.trim();
+  if (!task_id) { showToast('请输入 task_id', 'error'); return; }
+  const data = {
+    task_id,
+    page_size: parseInt(document.getElementById('skip_page_size').value) || 100,
+  };
+  const r = document.getElementById('skip_reason').value;
+  if (r) data.reason = r;
+  const resp = await apiPost('/api/developer/upload_skipped_list', data);
+  const ok = isSuccess(resp);
+  if (ok && resp.data) {
+    const d = resp.data;
+    const list = d.list || [];
+    let html = `
+      <div class="result-box show">
+        <div class="result-header">
+          <span class="status-ok">✓ 成功</span>
+          <span>共 ${d.total ?? list.length} 项 | next_cursor: <code>${d.next_cursor || '(无)'}</code></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>fileId</th><th>跳过原因</th></tr></thead>
+            <tbody>`;
+    list.forEach(item => {
+      html += `<tr><td><code>${item.file_id}</code></td><td><span class="tag tag-rejected">${item.reason}</span></td></tr>`;
+    });
+    html += '</tbody></table></div></div>';
+    document.getElementById('skipResult').innerHTML = html;
+  } else {
+    renderResult('skipResult', resp, false);
+  }
+}
+
+// ============ 3.3.10 上传成功的文件列表 ============
+async function callSuccessList() {
+  const task_id = document.getElementById('success_task_id').value.trim();
+  if (!task_id) { showToast('请输入 task_id', 'error'); return; }
+  const data = {
+    task_id,
+    page_size: parseInt(document.getElementById('success_page_size').value) || 100,
+  };
+  const resp = await apiPost('/api/developer/upload_success_list', data);
+  const ok = isSuccess(resp);
+  if (ok && resp.data) {
+    const d = resp.data;
+    const list = d.list || [];
+    let html = `
+      <div class="result-box show">
+        <div class="result-header">
+          <span class="status-ok">✓ 成功</span>
+          <span>共 ${d.total ?? list.length} 项 | next_cursor: <code>${d.next_cursor || '(无)'}</code></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>序号</th><th>fileId</th></tr></thead>
+            <tbody>`;
+    list.forEach((item, i) => {
+      html += `<tr><td>${i + 1}</td><td><code>${item.file_id}</code></td></tr>`;
+    });
+    html += '</tbody></table></div></div>';
+    document.getElementById('successResult').innerHTML = html;
+  } else {
+    renderResult('successResult', resp, false);
+  }
+}
+
+// 初始化
+renderPathBar();
+</script>
+</body>
+</html>
