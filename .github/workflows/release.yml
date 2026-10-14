@@ -24,6 +24,8 @@ on:
 
 env:
   PACKAGE_NAME: guangyapan-api-console
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   # ============================================================
@@ -105,11 +107,57 @@ jobs:
             ${{ env.PACKAGE_NAME }}-${{ steps.version.outputs.version }}.tar.gz.sha256
 
   # ============================================================
-  # 阶段三：版本发布（打 tag vX.Y.Z 时触发）
+  # 阶段三：构建 Docker 镜像
+  # ============================================================
+  docker:
+    name: 构建Docker镜像 (Docker)
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 提取 Docker 元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: 构建并推送 Docker 镜像
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+
+  # ============================================================
+  # 阶段四：版本发布（打 tag vX.Y.Z 时触发）
   # ============================================================
   release:
     name: 发布版本 (Release)
-    needs: build
+    needs: [build, docker]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:

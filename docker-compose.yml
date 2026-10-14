@@ -1,0 +1,28 @@
+# ============================================================
+# 光压云盘开发者API控制台 - Docker Compose 一键部署
+# ============================================================
+# 使用方式:
+#   1. 复制 config.example.json 为 config.json，填入你的 client_id 和 client_secret
+#   2. 启动: docker compose up -d
+#   3. 访问: http://localhost:5001
+#   4. 停止: docker compose down
+# ============================================================
+
+services:
+  guangyapan-console:
+    build: .
+    container_name: guangyapan-console
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    volumes:
+      # 挂载本地 config.json 到容器内（凭证不打包进镜像）
+      - ./config.json:/app/config.json:ro
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3

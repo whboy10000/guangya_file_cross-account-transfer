@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+.github
+
+# 敏感配置
+config.json
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.eggs
+dist
+build
+*.egg
+venv
+.venv
+env
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 文档（镜像中不需要）
+*.md
+光压云盘开发者API文档.md
+
+# 打包产物
+*.tar.gz
+*.sha256

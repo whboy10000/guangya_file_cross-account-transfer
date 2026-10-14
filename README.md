@@ -31,7 +31,14 @@
 ├── app.py                      # Flask 后端主程序（10个接口封装 + 签名鉴权）
 ├── config.json                 # 凭证配置文件（含 client_id / client_secret，已 gitignore）
 ├── config.example.json         # 凭证配置模板（提交到 Git，供他人参考）
+├── requirements.txt            # Python 依赖清单
+├── Dockerfile                  # Docker 镜像构建文件
+├── docker-compose.yml          # Docker Compose 一键部署
+├── .dockerignore               # Docker 构建忽略规则
 ├── .gitignore                  # Git 忽略规则（排除 config.json 等敏感文件）
+├── .github/
+│   └── workflows/
+│       └── release.yml         # GitHub Actions CI/CD 工作流
 ├── static/
 │   └── index.html              # 前端单页应用
 ├── 光压云盘开发者API文档.md      # 原始 API 参考文档
@@ -98,7 +105,74 @@ python app.py
 
 ---
 
-## 三、签名鉴权说明
+## 三、Docker 部署
+
+### 3.1 方式一：Docker Compose 一键部署（推荐）
+
+```bash
+# 1. 配置凭证
+cp config.example.json config.json
+# 编辑 config.json 填入你的 client_id 和 client_secret
+
+# 2. 一键启动
+docker compose up -d
+
+# 3. 访问 http://localhost:5001
+
+# 4. 查看日志
+docker compose logs -f
+
+# 5. 停止服务
+docker compose down
+```
+
+### 3.2 方式二：直接运行镜像
+
+镜像已发布到 GitHub Container Registry（GHCR）：
+
+```bash
+# 1. 配置凭证
+cp config.example.json config.json
+# 编辑 config.json 填入你的 client_id 和 client_secret
+
+# 2. 拉取并运行
+docker run -d \
+  --name guangyapan-console \
+  -p 5001:5001 \
+  -v $(pwd)/config.json:/app/config.json:ro \
+  ghcr.io/whboy10000/guangya_file_cross-account-transfer:latest
+
+# 3. 访问 http://localhost:5001
+```
+
+### 3.3 方式三：本地构建镜像
+
+```bash
+# 1. 配置凭证
+cp config.example.json config.json
+
+# 2. 构建镜像
+docker build -t guangyapan-console .
+
+# 3. 运行容器
+docker compose up -d
+```
+
+### 3.4 镜像标签说明
+
+| 标签 | 说明 |
+|------|------|
+| `latest` | main 分支最新版本 |
+| `vX.Y.Z` | 对应 Release 版本（如 v1.0.0） |
+| `vX.Y` | 最新的小版本 |
+| `main` | main 分支构建 |
+| `sha-xxxxxxx` | 对应 commit 的构建 |
+
+> **安全提示**：凭证通过 volume 挂载方式传入容器，不会打包进镜像。
+
+---
+
+## 四、签名鉴权说明
 
 光压云盘所有接口均需签名鉴权，本项目已自动处理，无需手动计算。
 
