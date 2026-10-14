@@ -1,0 +1,152 @@
+# ============================================================
+# 光压云盘开发者API控制台 - GitHub Actions 工作流
+# 基于 GitFlow 分支策略
+# ============================================================
+# 触发规则:
+#   - push 到 main / develop / release/* 分支 → 运行 lint + build
+#   - 打 tag vX.Y.Z → 自动创建 GitHub Release 并上传源码包
+# ============================================================
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/*'
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  PACKAGE_NAME: guangyapan-api-console
+
+jobs:
+  # ============================================================
+  # 阶段一：代码检查
+  # ============================================================
+  lint:
+    name: 代码检查 (Lint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装 flake8
+        run: pip install flake8
+
+      - name: 运行 flake8
+        run: flake8 app.py --max-line-length=120 --ignore=E501,W503,E402
+        continue-on-error: true
+
+  # ============================================================
+  # 阶段二：打包构建
+  # ============================================================
+  build:
+    name: 打包构建 (Build)
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 生成版本号
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "版本号: $VERSION"
+
+      - name: 打包源码
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          tar -czf "${PACKAGE_NAME}-${VERSION}.tar.gz" \
+            --exclude=".git" \
+            --exclude="config.json" \
+            --exclude="__pycache__" \
+            --exclude="*.pyc" \
+            --exclude=".DS_Store" \
+            --exclude="*.log" \
+            --exclude="venv" \
+            --exclude=".venv" \
+            --exclude=".github" \
+            .
+          ls -lh "${PACKAGE_NAME}-${VERSION}.tar.gz"
+
+      - name: 生成 SHA256 校验和
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sha256sum "${PACKAGE_NAME}-${VERSION}.tar.gz" > "${PACKAGE_NAME}-${VERSION}.tar.gz.sha256"
+          cat "${PACKAGE_NAME}-${VERSION}.tar.gz.sha256"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-package
+          path: |
+            ${{ env.PACKAGE_NAME }}-${{ steps.version.outputs.version }}.tar.gz
+            ${{ env.PACKAGE_NAME }}-${{ steps.version.outputs.version }}.tar.gz.sha256
+
+  # ============================================================
+  # 阶段三：版本发布（打 tag vX.Y.Z 时触发）
+  # ============================================================
+  release:
+    name: 发布版本 (Release)
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: source-package
+
+      - name: 显示产物
+        run: ls -lh
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## 光压云盘开发者API控制台 ${{ github.ref_name }}
+
+            ### 功能特性
+            - Flask 后端封装全部 10 个接口，自动签名鉴权（MD5 二进制 + SHA512）
+            - 前端 Web 控制台，支持文件管理 / 预上传审核 / 正式上传
+            - 凭证配置抽离到 config.json，通过 .gitignore 排除
+
+            ### 使用方式
+            1. 下载源码包并解压
+            2. 复制 `config.example.json` 为 `config.json`，填入你的 client_id 和 client_secret
+            3. 安装依赖: `pip install flask requests`
+            4. 启动服务: `python app.py`
+            5. 浏览器访问 http://localhost:5001
+
+            ### 校验和
+            ```
+            $(cat *.sha256 2>/dev/null)
+            ```
+          files: |
+            *.tar.gz
+            *.sha256
