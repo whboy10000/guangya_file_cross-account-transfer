@@ -3,8 +3,9 @@
 # 基于 GitFlow 分支策略
 # ============================================================
 # 触发规则:
-#   - push 到 main / develop / release/* 分支 → 运行 lint + build
-#   - 打 tag vX.Y.Z → 自动创建 GitHub Release 并上传源码包
+#   - push 到 main → 运行 lint + build + docker + 自动发布 Release
+#   - push 到 develop / release/* → 运行 lint + build + docker
+#   - 打 tag vX.Y.Z → 运行完整流程并发布正式版
 # ============================================================
 
 name: CI/CD Pipeline
@@ -26,8 +27,6 @@ env:
   PACKAGE_NAME: guangyapan-api-console
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  # 强制所有 JavaScript actions 使用 Node 24（解决 Node 20 弃用警告）
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # ============================================================
@@ -38,10 +37,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 设置 Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -62,7 +61,7 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 生成版本号
         id: version
@@ -79,7 +78,6 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           OUTPUT_FILE="${PACKAGE_NAME}-${VERSION}.tar.gz"
-          # 先输出到 /tmp 避免 tar 打包时包含自身（file changed as we read it）
           tar -czf "/tmp/${OUTPUT_FILE}" \
             --exclude=".git" \
             --exclude="config/config.json" \
@@ -101,7 +99,7 @@ jobs:
           cat "${PACKAGE_NAME}-${VERSION}.tar.gz.sha256"
 
       - name: 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: source-package
           path: |
@@ -121,13 +119,13 @@ jobs:
       packages: write
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 设置 Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: 登录 GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -135,7 +133,7 @@ jobs:
 
       - name: 提取 Docker 元数据
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -146,7 +144,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: 构建并推送 Docker 镜像
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: deploy/Dockerfile
@@ -156,21 +154,32 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   # ============================================================
-  # 阶段四：版本发布（打 tag vX.Y.Z 时触发）
+  # 阶段四：版本发布（push 到 main 或打 tag 时自动发布）
   # ============================================================
   release:
     name: 发布版本 (Release)
     needs: [build, docker]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: write
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: 生成版本号
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="main-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "版本号: $VERSION"
 
       - name: 下载构建产物
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: source-package
 
@@ -180,21 +189,22 @@ jobs:
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
           generate_release_notes: true
           body: |
-            ## 光压云盘开发者API控制台 ${{ github.ref_name }}
+            ## 光压云盘开发者API控制台 ${{ steps.version.outputs.version }}
 
             ### 功能特性
             - Flask 后端封装全部 10 个接口，自动签名鉴权（MD5 二进制 + SHA512）
             - 前端 Web 控制台，支持文件管理 / 预上传审核 / 正式上传
-            - 凭证配置抽离到 config.json，通过 .gitignore 排除
+            - 凭证配置抽离到 config/config.json，通过 .gitignore 排除
 
             ### 使用方式
             1. 下载源码包并解压
-            2. 复制 `config.example.json` 为 `config.json`，填入你的 client_id 和 client_secret
-            3. 安装依赖: `pip install flask requests`
-            4. 启动服务: `python app.py`
+            2. 复制 `config/config.example.json` 为 `config/config.json`，填入你的 client_id 和 client_secret
+            3. 安装依赖: `pip install -r app/requirements.txt`
+            4. 启动服务: `python app/app.py`
             5. 浏览器访问 http://localhost:5001
 
             ### 校验和
