@@ -154,29 +154,18 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
   # ============================================================
-  # 阶段四：版本发布（push 到 main 或打 tag 时自动发布）
+  # 阶段四：版本发布（打 tag vX.Y.Z 时触发）
   # ============================================================
   release:
     name: 发布版本 (Release)
     needs: [build, docker]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
     steps:
       - name: 检出代码
         uses: actions/checkout@v5
-
-      - name: 生成版本号
-        id: version
-        run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF_NAME}"
-          else
-            VERSION="main-${GITHUB_SHA::7}"
-          fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "版本号: $VERSION"
 
       - name: 下载构建产物
         uses: actions/download-artifact@v5
@@ -189,11 +178,10 @@ jobs:
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ steps.version.outputs.version }}
-          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ github.ref_name }}
           generate_release_notes: true
           body: |
-            ## 光压云盘开发者API控制台 ${{ steps.version.outputs.version }}
+            ## 光压云盘开发者API控制台 ${{ github.ref_name }}
 
             ### 功能特性
             - Flask 后端封装全部 10 个接口，自动签名鉴权（MD5 二进制 + SHA512）
